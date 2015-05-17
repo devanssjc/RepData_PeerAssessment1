@@ -5,21 +5,263 @@ output:
     keep_md: true
 ---
 
+##BACKGROUND
+This document, both the Rmd and HTML versions, are intended to provide the required information needed for the peer assessment for the 1st project in the course Reproducible Research.
+
+For those assessing this assignment, it is assumed that you have read and are familiar with the instructions for the assignment. If not, these instructions can be found in the same Github repository that contains this document, either in the README.md file in the root, or in the instructions.pdf file in a sub-directory 'doc'.
+
+## WORDS OF CAUTION TO PEER REVIEWERS
+I found what appeared to be pretty major flaw in the two example plots provided in the project instructions, and what this meant for me is that I probably am producing analysis and results that may be different than you expect. Plus, to make the plots work the way I thought they should, I had to deviate from what I think was intended in how I used the plotting tools (I used the base plotting system instead of ggplot or lattice).
+
+The error I think I found in the examples plots is in the treatment of the x-axis. It was intended to represent interval times in the data, and appears it was taken directly from the data-file format of HHMM, where HH is hours and MM is minutes. This problem is this: if this value is used in plotting, it gives goofy results. This is because parts of intervals within each hour appear to be missing, for example 0060 is missing. This is because 0060 is actually coded as 0100, and no intervals exist between and inclusive of 60 and 95. This is true for every hour boundary, and if you look at the example plots, you can see a jump in the plot for this part of every hour (between where xx60 and xx95 would be). To remedy this, I converted the intervals into proper POSITlt format and treated intervals in true time format in my plots. My plots show times correctly without the gaps and jumps of the example plots. My x-axis is labelled correctly - for example 12:00 is represented for noon, not 1200 as in the example plots).
+
+## ASSUMPTIONS
+Where practical, I document assumptions leading up to the code (inputs) and results (outputs).
 
 ## Loading and preprocessing the data
+For this for task of the assignment, all I do is read the data and make an assessment of its format and completeness. As instructed in the assignment, I forked and then cloned the repository "http://github.com/rdpeng/RepData_PeerAssessment1". This document was authored from the file 'PA1_template.Rmd', also co-located in the forked/cloned repository. I unzipped the data file "activity.zip" into my local repository, and it is the file I work with, "activity.csv".
 
+Then, I read the data into a data frame variable "adata"" for investigation.
+```{r load_proc, echo = TRUE}
+adata <- read.csv("activity.csv")
+```
+To help me understand the nature of the data, I looked at few couple rows of data, along with the adata structure:
 
+```{r showdataexample, echo = TRUE}
+print(adata[1:5,])
+print(adata[2401:2405,])
+print(str(adata))
+```
+Notice the interval information in this data-set has the problem I discussed earlier. I will soon fix this by creating a proper date/time column called newdate in adata. 
+
+Otherwise, the data is pretty straight forward. It is two months worth of data, with no missing intervals or days, and the intervals reflect the number of steps for 5 minute each (steps are shown in the steps column). As already mentioned, there are no days or intervals missing, however values for steps are missing for some intervals and days. For example, notice there are NAs shown for the steps column in the first few rows above (1 through 5). Actually, it turns out there are several whole days where all intervals for that day have no steps data (value is set to NA). We'll deal with the NAs later.
+
+First, I fix the date, which would better be reformatted into something more useful. So I create a new column in adata called newdate, of form POSITit, and store the corrected date value there. After adding the column, I print the structure of adata again showing the new column has been added.
+```{r cleandate, echo = TRUE}
+y1 <- adata$date
+h1 <- adata$interval %/% 100
+m1 <- adata$interval %% 100
+f1 <- "%Y-%m-%d %H %M"
+adata$newdate <- strptime(paste(y1, h1, m1), f1)
+print(str(adata))
+```
 
 ## What is mean total number of steps taken per day?
+The second part of this assignment, I had to first make sense of the assignment. So, I'm repeating it here for convenience.
 
+     1. For this part of the assignment, you can ignore the missing values in the data-set.
+      
+     2. Make a histogram of the total number of steps taken each day
+      
+     3. Calculate and report the mean and median total number of steps taken per day_
 
+This is simple enough, though I don't quite know how to ignore missing values. I have to do something with them, or they will interfere with the histogram, mean, and median calculation. What I do is pretty simple. When I sum the steps for each day, I remove the NA values. Since whole days have their steps set to NA, these days will end up appearing like no steps where taken on that day. I do not remove these days from the histogram.
+
+I use very conventional looping to compute the number of steps for each day. I use the length of the data to guide the number of days (ndays) based on the number of intervals per day (nints), and this is used in plotting the histogram. I also count the number of NAs, as this is part of the next part of the assignment, though it is easier to get it now.
+
+I set up a daily steps matrix of ndays (dsteps), as well as an matrix interval counter so I can keep track of the number of missing value intervals (imiss). I have two loops, when sequencing through days, reading the total number of steps for that day (dsteps), and then an inner loop to sequence through each interval for that day, accumulating the number of NAs for each interval (imiss), as well as the total numbers of steps for that internal (istep). istep and imiss will be used in the next portion of the assignment. All that is needed for this portion is a histogram, the mean number of steps per day, and the median number of steps per day. 
+
+```{r histosteps, echo = TRUE}
+ndays <- length(adata[,1]) %/% (24*12)
+dsteps <- matrix(data = NA, nrow = ndays)
+nints <- 24*12
+isteps <- matrix(data = 0, nrow = nints)
+imiss <- matrix(data = 0, nrow = nints)
+for (n in 1:ndays) {
+    dsteps[n] <- sum(adata$steps[(((n-1)*24*12)+1):(n*24*12)], na.rm = TRUE)
+    for (k in 1:nints) {
+        ival <- adata$steps[(((n-1)*24*12)+k)]
+        if (is.na(ival)) {
+            imiss[k] <- imiss[k] + 1
+            ival <- 0
+        }    
+        isteps[k] <- isteps[k] + ival
+    }
+}
+```
+For the histogram, I force 12 breaks because it gives pretty nice bin sizes). I then compute the average (mean) and median number of steps for all days. I force the mean to be an integer so it prints an ordinal value similar to what is presented in the data-set.
+
+```{r histoplot, echo = TRUE}
+hist(dsteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Steps per Day")
+avgdsteps <- as.integer(mean(dsteps))
+meddsteps <- median(dsteps)
+missdays <- sum(imiss) %/% nints
+print(avgdsteps)
+print(meddsteps)
+print(missdays)
+```
+The mean steps per day are: `r avgdsteps`
+
+The median steps per day are: `r meddsteps`
+
+Its worth noting that since I left in the days with step values (intervals) that were NAs, there is a very large bin in the range 0 to 2000 steps. This is because there were `r missdays` days that were missing interval data (steps)
 
 ## What is the average daily activity pattern?
+For this part of the assignment, I again repeat the instructions.
 
+    1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+    
+    2. Which 5-minute interval, on average across all the days in the data-set, contains the maximum number of steps?
 
+For the plot, i compute the interval average directly by dividing each accumulated interval by the totals number of days (ndays). This biases the results because several days had NAs. I've left in these days in computing the average to be consistent with the histogram, which counted these days as well. I also force the graph to just cover the time period exactly (xaxs = "i").
+
+To compute the interval with the largest steps, I set up a loop to increment through all intervals looking for the largest value, and the interval for which that value occurred. I then print both the interval number and the value for that interval.
+
+In this plot, you will see how my x-axis differs from the example provided by the instructors.
+
+```{r meancomp, echo = TRUE}
+plot(adata$newdate[1:nints], isteps/ndays, type = "l", ylab = "Steps", xlab = "Time", main = "Average Steps per 5 Minute Interval", xaxs = "i")
+mxint <- 0
+mxind <- NA
+for (k in 1:nints) {
+    if (isteps[k] >= mxint) {
+        mxint <- isteps[k]
+        mxind <- k
+    }
+}
+maxinterval <- paste(strftime(adata$newdate[mxind], "%H:%M")," - ",strftime(adata$newdate[mxind+1], "%H:%M"))
+maxvalue <- as.integer(isteps[mxind]/nints)
+
+print(maxinterval)
+print(maxvalue)
+```
+The interval with the largest average number of steps was internal `r maxinterval`, with an average of `r maxvalue` steps for that interval.
 
 ## Imputing missing values
 
+For this part of the assignment, I again repeat the instructions.
 
+    1. Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+    2. Calculate and report the total number of missing values in the data-set (i.e. the total number of rows with NAs)
+
+    3. Devise a strategy for filling in all of the missing values in the data-set. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+    4. Create a new data-set that is equal to the original data-set but with the missing data filled in.
+
+    5. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+Some of the work needed to fulfill this part of the assignment was covered in code in the previous part of the assignment. For example, I computed the number of rows missing values for steps in the vector imiss, and I also have the accumulated interval steps in the vector isteps.
+
+Following the lead of the instructor, the way I impute the missing values is to compute the mean for each interval for which there is data, and force that value into the rows (steps column) where values are missing. I do this by cycling through two nested loops, one for days, and one for intervals. I compute the mean for each interval by taking the total number of accumulated steps from the previous code (isteps) and dividing (integer) it by the number of days used in the accumulation. Note that this in not ndays, but ndays minus imiss. Here I correct the error that was present in the first interval plot made earlier in this assignment, adjusting the mean for the missing data. I make no attempt in imputing the missing values as to whether I impute weekend or weekday days differently. They are all treated the same for the purposes of imputation.
+
+I also create a new data-set from adata, called idata for imputed data. I overwrite the NAs in the step column as described above.
+
+```{r addmissing, echo = TRUE}
+idata <- adata
+for (n in 1:ndays) {
+    for (k in 1:nints) {
+        ival <- adata$steps[(((n-1)*24*12)+k)]
+        if (is.na(ival)) {
+            idata$steps[(((n-1)*24*12)+k)] <- isteps[k] %/% (ndays - imiss[k])
+        }    
+    }
+}
+```
+To prepare the new histogram data, I have to cycle through the data again, though I've renamed the variables, adding a '2' designator. For example, ndays changed to n2days. I did this so there would be no confusion if I reused the variable names from above, and it allows me to have two sets of data, the old data, and the new days, for comparison. 
+
+I redo the histogram, mean, and median analysis, but of course now with the missing values imputed from the means of the intervals.
+
+Note also there is an if statement that checks for NA. This should never evaluate to true, but I left the code in as a precaution.
+
+```{r histosteps2, echo = TRUE}
+n2days <- length(idata[,1]) %/% (24*12)
+d2steps <- matrix(data = NA, nrow = n2days)
+n2ints <- 24*12
+i2steps <- matrix(data = 0, nrow = n2ints)
+i2miss <- matrix(data = 0, nrow = n2ints)
+for (n2 in 1:n2days) {
+    d2steps[n2] <- sum(idata$steps[(((n2-1)*24*12)+1):(n2*24*12)], na.rm = TRUE)
+    for (k2 in 1:n2ints) {
+        i2val <- idata$steps[(((n2-1)*24*12)+k2)]
+        if (is.na(i2val)) {
+            i2miss[k] <- i2miss[k] + 1
+            Print("Error - NA Values Still Exist!!")
+            i2val <- 0
+        }    
+        i2steps[k2] <- i2steps[k2] + i2val
+    }
+}
+```
+I plot two histograms, the first is just with the new data with missing steps imputed as discussed above. The second histogram is differential, showing the change in bins from the original plot without the imputed values. I'll discuss that after the graphs are presented. I also recompute the average and median steps per day.
+```{r plothisto2, echo = TRUE}
+
+hist(d2steps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Steps per Day, With Missing Values Imputed")
+hist(d2steps-dsteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Changes in Steps per Day, With Missing Values Imputed")
+avgd2steps <- as.integer(mean(d2steps))
+medd2steps <- as.integer(median(d2steps))
+print(avgd2steps)
+print(medd2steps)
+```
+
+The mean steps, with imputed missing values, per day are: `r avgd2steps`
+
+The median steps, with imputed missing values, per day are: `r medd2steps`
+
+The first histogram now looks more normal, with the bin of steps between 0 and 2000 now being much smaller, and the bin in the middle being much larger (this is because we forced the missing values to be the mean).
+
+The second histogram is a plot of the difference between the original histogram data and the new histogram data with the imputed values added. The bin at 0 to 2000 steps if very large and actually represents most of the days that didn't change (differential value = 0). The bin 10000 to 12000 grew by the number of days that had missing values added to them. This is because the mean steps per day was added to each of the days where there were missing values.
+
+Everything else worked as expected. Since we've added missing values, the mean and median values of course will increase. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Again, repeating the assignment instructions:
+
+     1. For this part the weekdays() function may be of some help here. Use the data-set with the filled-in missing values for this part.
+
+     2. Create a new factor variable in the data-set with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+     3. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). The plot should look something like the following, which was created using simulated data: <plot not included in this Markdown file>
+
+Using the new data-set with the steps column NA's replaced with imputed values, and according to the class assignment, I start by adding a column that identifies each row as a 'weekday' or 'weekend'. I do this by simply looping through each row and writing to a new column if the day of the week is on a weekend day or a weekday day.
+
+This is pretty easy, just use two statements to fill a new column (dayofweek) with one of these two values. Finally, I change the class of the dayofweek column to be a factor, though for my purposes this is really not used.
+
+```{r weekdayadjust, echo = TRUE}
+norows <- length(idata[,1])
+for (j in 1:norows) {
+    if ((weekdays(idata$newdate[j], abbreviate = TRUE) == "Sat") | 
+            (weekdays(idata$newdate[j], abbreviate = TRUE) == "Sun")) {
+        idata$dayofweek[j] <- "Weekend"
+    }
+    else {
+        idata$dayofweek[j] <- "Weekday"
+    }
+}
+idata$dayofweek <- as.factor(idata$dayofweek)
+```
+
+For the next part of the assignment, I essentially repeat the code that was used in the first xyplot in this assignment, but now I keep track of interval accumulations for both weekends (in the vector iwesteps) and weekdays (in the vector iwdsteps). I also have to keep track of the total number of intervals accumulated for weekends (nweints) and weekdays (nwdints). This is needed so that the average can be computed within each plot.
+
+
+```{r weekdaycount, echo = TRUE}
+ndays <- length(adata[,1]) %/% (24*12)
+nweints <- 0
+nwdints <- 0
+nints <- 24*12
+iwesteps <- matrix(data = 0, nrow = nints)
+iwdsteps <- matrix(data = 0, nrow = nints)
+for (n in 1:ndays) {
+    for (k in 1:nints) {
+        ival <- idata$steps[(((n-1)*24*12)+k)]    
+        if (idata$dayofweek[(((n-1)*24*12)+k)] == "Weekend") {
+            iwesteps[k] <- iwesteps[k] + ival
+            nweints <- nweints + 1
+        }
+        else {
+            iwdsteps[k] <- iwdsteps[k] + ival
+            nwdints <- nwdints + 1
+        }
+    }
+}
+```
+An now I create three plots. These are the weekend plot, the weekday plot, and the differential plot (weekday minus weekend). I'll discuss the interpretation of these plots at the conclusion of the document.
+
+```{r weekdayplots, echo = TRUE, , fig.height=4, fig.width=8}
+plot(idata$newdate[1:nints], nints*iwesteps/nweints, type = "l", ylab = "Steps", xlab = "Time", main = "Weekend Average Steps per 5 Minute Interval", xaxs = "i")
+plot(idata$newdate[1:nints], nints*iwdsteps/nwdints, type = "l", ylab = "Steps", xlab = "Time", main = "Weekday Average Steps per 5 Minute Interval", xaxs = "i")
+plot(idata$newdate[1:nints], nints*((iwdsteps/nwdints)-(iwesteps/nweints)), type = "l", ylab = "Steps", xlab = "Time", main = "Weekday minus Weekend (Differential) Average Steps per 5 Minute Interval", xaxs = "i")
+```
+
+There is really not too much surprising here. Of course the x-axis that I have created for these plots looks more normal, like a time plot. The third graph plots the difference in interval averages for weekdays and weekends. There is so much noise due to the small interval size that it makes it heard to draw much of a conclusion. You can see that there are more consistently steps taken early in the morning for workdays, and more steps taken in the afternoon on weekend days, though they tend to be erratic.
