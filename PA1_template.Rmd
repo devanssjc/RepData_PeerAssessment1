@@ -120,7 +120,7 @@ for (k in 1:nints) {
     }
 }
 maxinterval <- paste(strftime(adata$newdate[mxind], "%H:%M")," - ",strftime(adata$newdate[mxind+1], "%H:%M"))
-maxvalue <- as.integer(isteps[mxind]/nints)
+maxvalue <- as.integer(isteps[mxind]/ndays)
 
 print(maxinterval)
 print(maxvalue)
@@ -187,7 +187,7 @@ I plot two histograms, the first is just with the new data with missing steps im
 ```{r plothisto2, echo = TRUE}
 
 hist(d2steps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Steps per Day, With Missing Values Imputed")
-hist(d2steps-dsteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Changes in Steps per Day, With Missing Values Imputed")
+hist(d2steps-dsteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Differential Steps per Day, With and Without Missing Values Imputed")
 avgd2steps <- as.integer(mean(d2steps))
 medd2steps <- as.integer(median(d2steps))
 print(avgd2steps)
@@ -256,7 +256,7 @@ for (n in 1:ndays) {
     }
 }
 ```
-An now I create three plots. These are the weekend plot, the weekday plot, and the differential plot (weekday minus weekend). I'll discuss the interpretation of these plots at the conclusion of the document.
+An now I create three plots. These is the weekend plot, the weekday plot, and a differential plot (weekday minus weekend). I'll discuss the interpretation of these plots at the conclusion of the document.
 
 ```{r weekdayplots, echo = TRUE, , fig.height=4, fig.width=8}
 plot(idata$newdate[1:nints], nints*iwesteps/nweints, type = "l", ylab = "Steps", xlab = "Time", main = "Weekend Average Steps per 5 Minute Interval", xaxs = "i")
@@ -264,4 +264,6 @@ plot(idata$newdate[1:nints], nints*iwdsteps/nwdints, type = "l", ylab = "Steps",
 plot(idata$newdate[1:nints], nints*((iwdsteps/nwdints)-(iwesteps/nweints)), type = "l", ylab = "Steps", xlab = "Time", main = "Weekday minus Weekend (Differential) Average Steps per 5 Minute Interval", xaxs = "i")
 ```
 
-There is really not too much surprising here. Of course the x-axis that I have created for these plots looks more normal, like a time plot. The third graph plots the difference in interval averages for weekdays and weekends. There is so much noise due to the small interval size that it makes it heard to draw much of a conclusion. You can see that there are more consistently steps taken early in the morning for workdays, and more steps taken in the afternoon on weekend days, though they tend to be erratic.
+There is really not too much of a surprise here. Of course the x-axis that I have created for these plots looks more normal, having real time plotted along that axis. 
+
+The third graph plots the difference in interval averages for weekdays and weekends. There is a lot of noise due to the small interval size that it makes it heard to draw much of a conclusion, and this is true for all three plots. You can see that there are more consistently steps taken early in the morning for workdays, and more steps taken in the afternoon on weekend days, though they tend to be erratic.
