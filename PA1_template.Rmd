@@ -256,9 +256,10 @@ for (n in 1:ndays) {
     }
 }
 ```
-An now I create three plots. These is the weekend plot, the weekday plot, and a differential plot (weekday minus weekend). I'll discuss the interpretation of these plots at the conclusion of the document.
+An now I create three plots. These is the weekend plot, the weekday plot, and a differential plot (weekday minus weekend). I'll discuss the interpretation of these plots at the conclusion of the document. Note that I use the base plotting system, not lattice. I use the parameter mfrow to create a panel of three plots, where I add at differential plot which is in response to the assignment's requests to make a comparison between weekend and weekday activity.
 
-```{r weekdayplots, echo = TRUE, , fig.height=4, fig.width=8}
+```{r weekdayplots, echo = TRUE, , fig.height=12, fig.width=8}
+par(mfrow = c(3,1))
 plot(idata$newdate[1:nints], nints*iwesteps/nweints, type = "l", ylab = "Steps", xlab = "Time", main = "Weekend Average Steps per 5 Minute Interval", xaxs = "i")
 plot(idata$newdate[1:nints], nints*iwdsteps/nwdints, type = "l", ylab = "Steps", xlab = "Time", main = "Weekday Average Steps per 5 Minute Interval", xaxs = "i")
 plot(idata$newdate[1:nints], nints*((iwdsteps/nwdints)-(iwesteps/nweints)), type = "l", ylab = "Steps", xlab = "Time", main = "Weekday minus Weekend (Differential) Average Steps per 5 Minute Interval", xaxs = "i")
