@@ -1,9 +1,4 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
 
 ##BACKGROUND
 This document, including the md, html versions, along with a directory of figures, are intended to provide the required information needed for a peer assessment for this 1st project (Peer Assessment) in the course: Reproducible Research. For conveniese of the review, I've also provide a pdf of the html document.
@@ -23,22 +18,74 @@ You may notice in graphs, where we have been asked to plot interval on one axis,
 For this task of the assignment, I read the data and make an assessment of its format and completeness. As instructed in the assignment, I forked and then cloned the repository "http://github.com/rdpeng/RepData_PeerAssessment1". Note that this document was authored from the file 'PA1_template.Rmd', also co-located in the forked/cloned repository. I unzipped the data file "activity.zip" and copied it into my local repository, and this is the file I work with below, "activity.csv".
 
 I read the data into a data frame variable "adata"" for investigation.
-```{r load_proc, echo = TRUE}
+
+```r
 adata <- read.csv("activity.csv")
 ```
 
 Note that I use functions of the dplyr and lubridate packages, so I load 'dplyr' and 'lubridate here.
 
-```{r libraryload, echo = TRUE}
+
+```r
 library(dplyr)
+```
+
+```
+## 
+## Attaching package: 'dplyr'
+## 
+## The following object is masked from 'package:stats':
+## 
+##     filter
+## 
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+```
+
+```r
 library(lubridate)
 ```
 
 To help understand the nature of the data, here are a few rows of adata, along with the structure of adata:
-```{r showdataexample, echo = TRUE}
+
+```r
 print(adata[1:5,])
+```
+
+```
+##   steps       date interval
+## 1    NA 2012-10-01        0
+## 2    NA 2012-10-01        5
+## 3    NA 2012-10-01       10
+## 4    NA 2012-10-01       15
+## 5    NA 2012-10-01       20
+```
+
+```r
 print(adata[2410:2415,])
+```
+
+```
+##      steps       date interval
+## 2410   613 2012-10-09      845
+## 2411   530 2012-10-09      850
+## 2412   655 2012-10-09      855
+## 2413   134 2012-10-09      900
+## 2414     0 2012-10-09      905
+## 2415     0 2012-10-09      910
+```
+
+```r
 print(str(adata))
+```
+
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+## NULL
 ```
 You may Notice the interval information in the rows 2410:2415 in 'adata', which show the problem I discussed earlier on background, that intervals don't have values within each hour for the vales xx60 to xx95. I fix this later creating time vector stored this in the variable ti. 
 
@@ -46,8 +93,8 @@ The data is straight forward. There are two months worth of data, with no missin
 
 I first get a time vector to use instead of interval. I create a new variable called 'ti' (time interval), of form POSITlt. For readiblity, I create some temporary variables for extracting the date, hours, and seconds from the dataset. I used the first days values for 'interval' in the data set 'adata' to create the 'ti' vector.
 
-```{r cleandate, echo = TRUE}
 
+```r
 ti <- matrix(data = NA, nrow = 288)
 h1 <- adata$interval[1:288] %/% 100 # (integer divide to get hours)
 m1 <- adata$interval[1:288] %% 100  # (modulus divide to get minutes)
@@ -68,7 +115,8 @@ ti <- strptime(paste(h1, m1), f1)
 ###My response:
 For this step, I create 4 subsets of the data. First, I subset adata into two variables, one without NAs, and one only with NAs, and these are in data frames 'nonad', and 'nad'. I then to create two more data frame variables from the NA free data (nonad), one is 'nonad' regrouped by date (gd_nonad),is a variable containing the number of steps summed for each day (sdm_nonad). I exploit the 'dplyr' functions 'group_by' and 'summarize' to ease this process.
 
-```{r dataprep, echo = TRUE}
+
+```r
 nonad <- adata[!is.na(adata$steps),]
 nad <- adata[is.na(adata$steps),]
 gd_nonad <- group_by(nonad, date)
@@ -77,15 +125,21 @@ dsm_nonad <- summarize(gd_nonad, dssteps = sum(steps))
 
 For the histogram of the daily steps, I force 12 breaks, as it gives pretty nice bin size. I then compute the average (mean) and median number of steps for all days, and report them, along with the number of NA rows that were found. I convert the mean steps per day to in integer for readibility.
 
-```{r histoplot, echo = TRUE}
+
+```r
 hist(dsm_nonad$dssteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Steps per Day")
+```
+
+![](PA1_template_files/figure-html/histoplot-1.png) 
+
+```r
 avg_dsm <- as.integer(mean(dsm_nonad$dssteps))
 mdn_dsm <- median(dsm_nonad$dssteps)
 ```
 
-The mean steps per day are: `r avg_dsm`
+The mean steps per day are: 10766
 
-The median steps per day are: `r mdn_dsm`
+The median steps per day are: 10765
 
 ##What is the average daily activity pattern?
 ###The course instructions are:
@@ -97,21 +151,25 @@ The median steps per day are: `r mdn_dsm`
 ###My Response:
 The first step is to create a data frame containing the mean interval values for all days. To do this, I first create a new data frame from the nonad data frame, grouped by interval (gi_nonad. I then create the resulting data frame with the mean steps for each interval (imn_nonad). Finally, I plot this data, using the mean interval steps ('misteps' in 'imn_nonad' (y axis), against time 'ti' (x axis)).
 
-``` {r plotintavg, echo = TRUE}
+
+```r
 gi_nonad <- group_by(nonad, interval)
 imn_nonad <- summarize(gi_nonad, misteps = mean(steps))
 # plot(ti, imn_nonad$misteps, type = "l")
 plot(ti, imn_nonad$misteps, type = "l", ylab = "Steps", xlab = "Time", main = "Average Steps per 5 Minute Interval", xaxs = "i")
 ```
 
+![](PA1_template_files/figure-html/plotintavg-1.png) 
+
 The second step is to determine the 5 minute interval with the largest (maximum) average number of steps. I use the R function 'which.max to do this, then collecting both the hour and minute values for the maximum value, pasting them together with a ':' seperator, and storing the result in 'max_int' (maximum interval). I then also get the value at that interval and store it in 'max_val'.
-``` {r maxavginterval, echo = TRUE}
+
+```r
 which_int <- which.max(imn_nonad$misteps)
 max_int <- paste(hour(ti[which_int]), minute(ti[which_int]), sep = ":")
 max_val <- as.integer(imn_nonad$misteps[which_int]) 
 ```
 
-The maximum average interval was at: `r max_int`, with a value of `r max_val` steps.
+The maximum average interval was at: 8:35, with a value of 206 steps.
 
 ##Imputing missing values
 ###The course instructions are:
@@ -128,10 +186,11 @@ The maximum average interval was at: `r max_int`, with a value of `r max_val` st
 
 ###My Response:
 The first item is to computer the number of rows with missing values. This is just the length of the data frame I created earlier, nad.
-``` {r missingsteps, echo = TRUE}
+
+```r
 miss <- length(nad$steps)
 ```
-The total number of missing rows are: `r miss`
+The total number of missing rows are: 2304
 
 The second step is to devise a stategy for filling in all of the missing values. For this, I am choosing to simply replace each missing row step value with the average value for that interval from the data computed above, stored in the data frame 'imn_nonad'. 
 
@@ -139,7 +198,8 @@ I start by creating a new data frame 'nadnew', copied from nad. I then copy into
 
 The newly updated dataset 'nadnew' is then bound with the existing 'nonad' data set (rbind) and stored in a new data frame 'bdata'. This new data frame contains all the rows of the original data frame (adata), but now with the rows with missing step values (NAs) imputed to contain the averages.
 
-```{r impute, echo = TRUE}
+
+```r
 nadnew <- nad
 nadnew$steps <- as.integer(round(imn_nonad$misteps),0)
 bdata <- rbind(nonad, nadnew)
@@ -147,7 +207,8 @@ bdata <- rbind(nonad, nadnew)
 
 From this, I recreate a histogram, exactly as before, but now use bdata (the data set with the imputed step values). Note that I use the same technique as earlier, but with bdata instead of nonad, creted a new data set grouped by day, and then computing the number of steps for each day. I also calculate the new mean and median number of steps.
 
-``` {r histoimputed}
+
+```r
 gd_bdata <- group_by(bdata, date)
 dsm_bdata <- summarize(gd_bdata, dssteps = sum(steps))
 avg_dsmb <- as.integer(mean(dsm_bdata$dssteps))
@@ -155,13 +216,15 @@ mdn_dsmb <- median(dsm_bdata$dssteps)
 hist(dsm_bdata$dssteps, breaks = 12, xlab = "Steps", ylab = "Number of Days", main = "Steps per Day, With Missing Values Imputed")
 ```
 
-The mean steps per day (with imputed values added) are: `r avg_dsmb`
+![](PA1_template_files/figure-html/histoimputed-1.png) 
 
-The median steps per day (with imputed values added) are: `r mdn_dsmb`
+The mean steps per day (with imputed values added) are: 10765
 
-The new histogram is nearly identical to the original, except that the bin at around 10000 steps is 8 days (frequency) taller. This is a direct result of the method of imputation we used. The recomputed average is almost identical to the originally computed value, `r avg_dsmb` (new) versus `r avg_dsm` (old), but the average for the added days (imputed) were slightly lower (about 4 steps on average). This difference is accounted for in the rounding error of the imputed values (I converted them to integers).
+The median steps per day (with imputed values added) are: 10762
 
-The median changed, `r mdn_dsmb` (new) versus `r mdn_dsm` (old). The new median value has moved lower, reflecting the effects of imputing the missing values. In this case, rounding and converting the interval means to integers (for the imputed days and rows) moved the median value to match the imputed daily average, which as IO said early, is sligtly lower than the overall daily average (again, an artifact of rounding and converting to integer). 
+The new histogram is nearly identical to the original, except that the bin at around 10000 steps is 8 days (frequency) taller. This is a direct result of the method of imputation we used. The recomputed average is almost identical to the originally computed value, 10765 (new) versus 10766 (old), but the average for the added days (imputed) were slightly lower (about 4 steps on average). This difference is accounted for in the rounding error of the imputed values (I converted them to integers).
+
+The median changed, 10762 (new) versus 10765 (old). The new median value has moved lower, reflecting the effects of imputing the missing values. In this case, rounding and converting the interval means to integers (for the imputed days and rows) moved the median value to match the imputed daily average, which as IO said early, is sligtly lower than the overall daily average (again, an artifact of rounding and converting to integer). 
 
 ##Are there differences in activity patterns between weekdays and weekends?
 ###The course instructions are:
@@ -177,7 +240,8 @@ As suggested, I used the dataset (bdata) created with the imputed missing values
 
 I then group the data by interval, similar to what has been done in earlier examples of this analysis. I then summarize the mean (based on 'interval') steps for each group (weekday or weekend), using the 'dplyr' function 'filter' to subset the two cases. I store the weekday and weekend mean interval data into two vectors, 'westeps' for weekend data, and 'wdsteps' for weekday data. I then plot the two sets of data in a panel of two plots for review.
 
-```{r weekdaycomp, echo = TRUE, fig.height=8, fig.width=7}
+
+```r
 f1 <- "%Y-%m-%d"       # Format to be used to convert to POSTlt
 we <- weekdays(strptime(bdata$date, format = f1)) == "Saturday" | weekdays(strptime(bdata$date, format = f1)) == "Sunday"
 bdata$we[we] <- "weekend"
@@ -190,7 +254,8 @@ wdstps <- summarize(filter(gbi_bdata, we == "weekday"), isteps = mean(steps))
 par(mfrow = c(2,1)) 
 plot(ti, wdstps$isteps, type = "l", ylab = "Steps", xlab = "Time", main = "Weekday Average Steps per 5 Minute Interval", xaxs = "i")
 plot(ti, westps$isteps, type = "l", ylab = "Steps", xlab = "Time", main = "Weekend Average Steps per 5 Minute Interval", xaxs = "i")
-
 ```
+
+![](PA1_template_files/figure-html/weekdaycomp-1.png) 
 
 Examination of the two plots shows that weekend activity has fewer steps in the morning, but is more noisy and perhaps higher in the afternoon, compared to weekday activity.
